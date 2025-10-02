@@ -1,0 +1,16 @@
+# Archivos temporales de LEGO Spike Prime
+*.ini
+*.log
+*.tmp
+
+# Archivos generados por el software
+*.llsp3.backup
+*.llsp3.lock
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de Python compilados (si exportas .py)
+__pycache__/
+*.pyc
