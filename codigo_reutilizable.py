@@ -2,10 +2,13 @@ from hub import port
 import runloop
 import motor_pair
 import motor
+import color_sensor
+import color 
+from hub import light_matrix, sound
 
 # --- 1. DEFINICIÓN DE PUERTOS Y CONSTANTES ---
-motor_izquierda = port.C
-motor_derecha = port.D
+motor_izquierda = port.D
+motor_derecha = port.E
 puerto_garra = port.A
 
 # CONSTANTES FÍSICAS (clave para la clase de conversiones)
@@ -30,27 +33,27 @@ async def bajar_garra(grados: int = 90, velocidad: int = 365) -> None:
 
 # --- 4. FUNCIONES PARA GIROS ---
 # Usan el par de motores para giros más controlados (giro en arco o sobre el eje).
-async def girar_derecha_fase(grados: int = 200, direccion: int = 90, velocidad: int = 500) -> None:
+async def girar_derecha_fase(grados: int = 200, direccion: int = 90, velocidad: int = 1000) -> None:
     """Gira en fase a la derecha según grados de motor."""
     await motor_pair.move_for_degrees(motor_pair.PAIR_1, grados, direccion, velocity=velocidad)
 
-async def girar_izquierda_fase(grados: int = 200, direccion: int = 90, velocidad: int = 500) -> None:
+async def girar_izquierda_fase(grados: int = 200, direccion: int = 90, velocidad: int = 1000) -> None:
     """Gira en fase según grados de motor."""
-    await motor_pair.move_for_degrees(motor_pair.PAIR_1, grados, -direccion, velocity=velocidad)
+    await motor_pair.move_for_degrees(motor_pair.PAIR_1, -grados, direccion, velocity=velocidad)
 
 # Funciones de giro en desfase (giro sobre una rueda)
 # Pendiente por ajustar grados
 async def girar_derecha_desfase(grados: int = 90, velocidad: int = 500) -> None:
     """Gira a la derecha moviendo solo el motor izquierdo (desfase)."""
-    motor.stop(motor_derecha, stop=motor.BRAKE) # Detiene el motor con freno
-    await motor.run_for_degrees(motor_izquierda, grados, velocity=velocidad)
-    motor_pair.stop(motor_pair.PAIR_1) # Limpieza
+    motor.run(motor_izquierda, -500)
+    await pausa(0.8)
+    motor.stop(motor_izquierda, stop=motor.BRAKE)
 
 async def girar_izquierda_desfase(grados: int = 90, velocidad: int = 500) -> None:
     """Gira a la izquierda moviendo solo el motor derecho (desfase)."""
-    motor.stop(motor_izquierda, stop=motor.BRAKE) # Detiene el motor con freno
-    await motor.run_for_degrees(motor_derecha, grados, velocity=velocidad)
-    motor_pair.stop(motor_pair.PAIR_1) # Limpieza
+    motor.run(motor_derecha, 500)
+    await pausa(0.8)
+    motor.stop(motor_derecha, stop=motor.BRAKE)
 
 
 # --- 5. FUNCIONES DE AVANCE (usan la conversión a float) ---
@@ -72,12 +75,22 @@ async def retroceder_grados(grados: int, velocidad: int = 500) -> None:
     """Retrocede recto la cantidad de grados de motor especificada (valor negativo)."""
     await motor_pair.move_for_degrees(motor_pair.PAIR_1, -grados, 0, velocity=velocidad)
 
+async def avanzar_rotaciones(rotaciones: int, velocidad: int = 500) -> None:
+    """Avanza recto la cantidad de rotaciones especificadas."""
+    grados = GRADOS_POR_ROTACION * rotaciones
+    await motor_pair.move_for_degrees(motor_pair.PAIR_1, grados, 0, velocity=velocidad)
+
+async def retroceder_rotaciones(rotaciones: int, velocidad: int = 500) -> None:
+    """Retrocede recto la cantidad de rotaciones especificadas."""
+    grados = GRADOS_POR_ROTACION * rotaciones
+    await motor_pair.move_for_degrees(motor_pair.PAIR_1, -grados, 0, velocity=velocidad)
+
 # Funciones de Avance/Retroceso Indefinido (No son awaitable)
-async def avanzar_indefinidamente(velocidad: int = 500) -> None:
+def avanzar_indefinidamente(velocidad: int = 500) -> None:
     """Avanza recto indefinidamente (usar stop para detener)."""
     motor_pair.move(motor_pair.PAIR_1, 0, velocity=velocidad)
 
-async def retroceder_indefinidamente(velocidad: int = 500) -> None:
+def retroceder_indefinidamente(velocidad: int = 500) -> None:
     """Retrocede recto indefinidamente (usar stop para detener)."""
     motor_pair.move(motor_pair.PAIR_1, 0, velocity=-velocidad)
 
@@ -86,12 +99,19 @@ async def pausa(segundos: float = 2) -> None:
     """Pausa asíncrona no bloqueante. Por defecto, 2 segundos."""
     await runloop.sleep_ms(int(segundos * 1000))
 
+async def emote():
+    motor.run(motor_derecha, 1000)
+    light_matrix.show_image(light_matrix.IMAGE_HAPPY)
+    sound.beep(440, 10000, 100)
+    await pausa(10)
+    motor.stop(motor_derecha)
+
 # --- FUNCIÓN PRINCIPAL Y EJECUCIÓN ---
 async def main():
     # Inicialización del par de motores
     motor_pair.pair(motor_pair.PAIR_1, motor_izquierda, motor_derecha)
 
-    print("Base de código lista y emparejada. Aquí va tu lógica del programa.")
+    await emote()
 
 # Acá se llama a la función main definida.
 runloop.run(main())
