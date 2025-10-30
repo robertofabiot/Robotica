@@ -5,11 +5,14 @@ import motor
 import color_sensor
 import color 
 from hub import light_matrix, sound
+import distance_sensor
 
 # --- 1. DEFINICIÓN DE PUERTOS Y CONSTANTES ---
 motor_izquierda = port.D
 motor_derecha = port.E
 puerto_garra = port.A
+puerto_sensor_color = port.B
+puerto_sensor_ultrasonico = port.C
 
 # CONSTANTES FÍSICAS (clave para la clase de conversiones)
 CIRCUNFERENCIA_RUEDA = 17.58 # float
@@ -55,7 +58,6 @@ async def girar_izquierda_desfase(grados: int = 90, velocidad: int = 500) -> Non
     await pausa(0.8)
     motor.stop(motor_derecha, stop=motor.BRAKE)
 
-
 # --- 5. FUNCIONES DE AVANCE (usan la conversión a float) ---
 async def avanzar_cm(cm: float, velocidad: int = 500) -> None:
     """Avanza recto la cantidad de cm especificada, usando la fórmula de conversión."""
@@ -98,6 +100,24 @@ def retroceder_indefinidamente(velocidad: int = 500) -> None:
 async def pausa(segundos: float = 2) -> None:
     """Pausa asíncrona no bloqueante. Por defecto, 2 segundos."""
     await runloop.sleep_ms(int(segundos * 1000))
+
+# --- 7. FUNCIONES SENSOR DE COLOR ---
+async def avanzar_hasta_detectar_color(color) -> None:
+    while color_sensor.color(puerto_sensor_color) != color:
+        avanzar_indefinidamente()
+        runloop.sleep_ms(1)
+    motor_pair.stop(motor_pair.PAIR_1)
+
+# --- 8. FUNCIONES SENSOR ULTRASÓNICO ---
+async def avanzar_hasta_distancia(distancia_obj_mm: int) -> None:
+    while True:
+        distancia_actual_mm = distance_sensor.distance(puerto_sensor_ultrasonico)
+
+        if distancia_actual_mm <= distancia_obj_mm:
+            motor_pair.stop(motor_pair.PAIR_1)
+            await pausa()
+            break
+        await runloop.sleep_ms(50)
 
 async def emote():
     motor.run(motor_derecha, 1000)
